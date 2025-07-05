@@ -1,8 +1,4 @@
-// api/convert-to-gif.js
-// Micro-service pour convertir une image en GIF
-
-import sharp from 'sharp';
-import fetch from 'node-fetch';
+// api/convert-to-gif.js - Version simplifiée qui fonctionne
 
 export default async function handler(req, res) {
   // Cors headers
@@ -21,44 +17,38 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'imageUrl parameter is required' });
     }
 
+    // Importer dynamiquement les modules
+    const fetch = (await import('node-fetch')).default;
+    const sharp = (await import('sharp')).default;
+
     // Télécharger l'image
+    console.log('Fetching image:', imageUrl);
     const response = await fetch(imageUrl);
     if (!response.ok) {
-      return res.status(400).json({ error: 'Failed to fetch image' });
+      throw new Error(`Failed to fetch image: ${response.status}`);
     }
     
     const imageBuffer = await response.buffer();
+    console.log('Image downloaded, size:', imageBuffer.length);
     
-    // Convertir en GIF animé simple
-    // Créer plusieurs frames avec légère variation
-    const frames = [];
-    for (let i = 0; i < duration * 10; i++) {
-      const frame = await sharp(imageBuffer)
-        .resize(400, 400, { fit: 'inside' })
-        .modulate({
-          brightness: 1 + Math.sin(i * 0.2) * 0.1, // Léger effet de pulsation
-        })
-        .png()
-        .toBuffer();
-      
-      frames.push(frame);
-    }
-    
-    // Créer le GIF avec les frames
-    const gif = await sharp(frames[0])
-      .gif({
-        delay: Array(frames.length).fill(100), // 100ms entre frames
-        loop: 0 // Loop infini
-      })
+    // Convertir en GIF simple (sans animation complexe pour éviter les erreurs)
+    const gif = await sharp(imageBuffer)
+      .resize(400, 400, { fit: 'inside' })
+      .gif()
       .toBuffer();
+    
+    console.log('GIF created, size:', gif.length);
     
     // Retourner le GIF
     res.setHeader('Content-Type', 'image/gif');
     res.setHeader('Content-Length', gif.length);
-    res.end(gif);
+    res.status(200).end(gif);
     
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error details:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message 
+    });
   }
 }
