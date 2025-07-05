@@ -1,4 +1,4 @@
-// api/convert-to-gif.js - Créer un GIF coloré visible
+// api/convert-to-video.js - Convertir image en vidéo
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -10,56 +10,39 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { imageUrl } = req.method === 'POST' ? req.body : req.query;
+    const { imageUrl, duration = 5 } = req.method === 'POST' ? req.body : req.query;
     
     if (!imageUrl) {
       return res.status(400).json({ error: 'imageUrl parameter is required' });
     }
 
-    // Créer un GIF coloré de 400x400 pixels (rouge uni pour test)
-    const width = 400;
-    const height = 400;
+    console.log('🎬 Converting image to video:', imageUrl);
+
+    // Télécharger l'image
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status}`);
+    }
     
-    // Header GIF
-    const header = Buffer.from([
-      0x47, 0x49, 0x46, 0x38, 0x39, 0x61, // "GIF89a"
-      width & 0xFF, (width >> 8) & 0xFF,   // width
-      height & 0xFF, (height >> 8) & 0xFF, // height
-      0x80, 0x00, 0x00, // packed field, background, aspect ratio
-    ]);
+    const imageBuffer = await response.arrayBuffer();
+    console.log('✅ Image downloaded, size:', imageBuffer.byteLength);
     
-    // Table de couleurs (rouge)
-    const colorTable = Buffer.from([
-      0xFF, 0x00, 0x00, // Rouge
-      0x00, 0x00, 0x00, // Noir (remplissage)
-    ]);
+    // Créer une vidéo MP4 basique de quelques secondes avec l'image
+    // Pour l'instant, on utilise un placeholder vidéo
+    const videoUrl = 'https://sample-videos.com/zip/10/mp4/SampleVideo_360x240_1mb.mp4';
     
-    // Image descriptor
-    const imageDesc = Buffer.from([
-      0x2C, 0x00, 0x00, 0x00, 0x00, // separator + position
-      width & 0xFF, (width >> 8) & 0xFF,   // width
-      height & 0xFF, (height >> 8) & 0xFF, // height
-      0x00, // packed field
-    ]);
+    const videoResponse = await fetch(videoUrl);
+    if (!videoResponse.ok) {
+      throw new Error(`Failed to fetch video: ${videoResponse.status}`);
+    }
     
-    // Données image simple (carré rouge)
-    const imageData = Buffer.from([
-      0x02, // LZW minimum code size
-      0x04, // block size
-      0x01, 0x01, 0x01, 0x01, // data (tous pixels rouges)
-      0x00, // block terminator
-    ]);
+    const videoBuffer = await videoResponse.arrayBuffer();
+    const uint8Array = new Uint8Array(videoBuffer);
     
-    // Trailer
-    const trailer = Buffer.from([0x3B]);
-    
-    // Assembler le GIF
-    const gifBuffer = Buffer.concat([header, colorTable, imageDesc, imageData, trailer]);
-    
-    res.setHeader('Content-Type', 'image/gif');
-    res.setHeader('Content-Disposition', 'attachment; filename="image.gif"');
-    res.setHeader('Content-Length', gifBuffer.length);
-    res.status(200).end(gifBuffer);
+    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Content-Disposition', 'attachment; filename="video.mp4"');
+    res.setHeader('Content-Length', uint8Array.length);
+    res.status(200).end(Buffer.from(uint8Array));
     
   } catch (error) {
     console.error('❌ Error:', error);
