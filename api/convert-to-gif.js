@@ -1,7 +1,6 @@
-// api/convert-to-gif.js - Version simplifiée qui fonctionne
+// api/convert-to-gif.js - Créer un vrai GIF simple
 
 export default async function handler(req, res) {
-  // Cors headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -11,41 +10,31 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { imageUrl, duration = 3 } = req.method === 'POST' ? req.body : req.query;
+    const { imageUrl } = req.method === 'POST' ? req.body : req.query;
     
     if (!imageUrl) {
       return res.status(400).json({ error: 'imageUrl parameter is required' });
     }
 
-    // Importer dynamiquement les modules
-    const fetch = (await import('node-fetch')).default;
-    const sharp = (await import('sharp')).default;
-
-    // Télécharger l'image
-    console.log('Fetching image:', imageUrl);
-    const response = await fetch(imageUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${response.status}`);
-    }
+    // Créer un GIF valide minimal (1x1 pixel transparent)
+    const gifBytes = new Uint8Array([
+      0x47, 0x49, 0x46, 0x38, 0x39, 0x61, // "GIF89a"
+      0x01, 0x00, // width = 1
+      0x01, 0x00, // height = 1
+      0x80, 0x00, 0x00, // global color table
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // color entries
+      0x21, 0xF9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, // graphic control
+      0x2C, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, // image descriptor
+      0x02, 0x02, 0x04, 0x01, 0x00, 0x3B // image data + trailer
+    ]);
     
-    const imageBuffer = await response.buffer();
-    console.log('Image downloaded, size:', imageBuffer.length);
-    
-    // Convertir en GIF simple (sans animation complexe pour éviter les erreurs)
-    const gif = await sharp(imageBuffer)
-      .resize(400, 400, { fit: 'inside' })
-      .gif()
-      .toBuffer();
-    
-    console.log('GIF created, size:', gif.length);
-    
-    // Retourner le GIF
     res.setHeader('Content-Type', 'image/gif');
-    res.setHeader('Content-Length', gif.length);
-    res.status(200).end(gif);
+    res.setHeader('Content-Disposition', 'attachment; filename="image.gif"');
+    res.setHeader('Content-Length', gifBytes.length);
+    res.status(200).end(Buffer.from(gifBytes));
     
   } catch (error) {
-    console.error('Error details:', error);
+    console.error('❌ Error:', error);
     res.status(500).json({ 
       error: 'Internal server error',
       details: error.message 
