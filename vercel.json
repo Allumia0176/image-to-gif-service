@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/convert-to-gif.js": {
+      "runtime": "@vercel/node"
+    }
+  }
+}
